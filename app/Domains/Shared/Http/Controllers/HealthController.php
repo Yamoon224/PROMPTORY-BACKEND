@@ -24,7 +24,7 @@ class HealthController extends Controller
         return response()->json([
             'status' => $healthy ? 'ok' : 'degraded',
             'checks' => ['database' => $database],
-            'payment_gateway' => config('promptory.gateway'),
+            'payment_methods' => array_keys((array) config('promptory.gateways', [])),
             'timestamp' => now()->toIso8601String(),
         ], $healthy ? 200 : 503);
     }
