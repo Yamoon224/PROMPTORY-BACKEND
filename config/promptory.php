@@ -1,6 +1,7 @@
 <?php
 
-use App\Domains\Payments\Gateways\SimulatedPaymentGateway;
+use App\Domains\Payments\Gateways\PaypalPaymentGateway;
+use App\Domains\Payments\Gateways\StripePaymentGateway;
 
 /*
 |--------------------------------------------------------------------------
@@ -42,16 +43,18 @@ return [
     ],
 
     /*
-     | Agregateur de paiement actif. `simulated` rejoue le cycle complet sans
-     | appel reseau : c'est celui du poste de developpement et de la suite de
-     | tests. Brancher Stripe ou PayPal consiste a ajouter une classe ici, pas
-     | a toucher au domaine Sales ou Subscriptions.
+     | Agregateurs de paiement disponibles, un par moyen de paiement propose a
+     | l'acheteur (voir `App\Domains\Payments\Enums\PaymentMethod`). Chacun
+     | rejoue un paiement simule tant que ses identifiants ne sont pas
+     | configures (voir `config/services.php`) : le poste de developpement et
+     | la demonstration fonctionnent sans compte Stripe ni PayPal.
      */
-    'gateway' => env('PAYMENT_GATEWAY', 'simulated'),
-
     'gateways' => [
-        'simulated' => [
-            'driver' => SimulatedPaymentGateway::class,
+        'stripe' => [
+            'driver' => StripePaymentGateway::class,
+        ],
+        'paypal' => [
+            'driver' => PaypalPaymentGateway::class,
         ],
     ],
 ];

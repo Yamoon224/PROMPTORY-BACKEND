@@ -12,7 +12,6 @@ use App\Domains\Catalog\Repositories\EloquentIaModelRepository;
 use App\Domains\Catalog\Repositories\EloquentTagRepository;
 use App\Domains\Packs\Contracts\PackRepositoryContract;
 use App\Domains\Packs\Repositories\EloquentPackRepository;
-use App\Domains\Payments\Contracts\PaymentGatewayContract;
 use App\Domains\Prompts\Contracts\FolderRepositoryContract;
 use App\Domains\Prompts\Contracts\PromptRepositoryContract;
 use App\Domains\Prompts\Repositories\EloquentFolderRepository;
@@ -26,16 +25,20 @@ use App\Domains\Subscriptions\Repositories\EloquentSubscriptionRepository;
 use App\Domains\Users\Contracts\UserRepositoryContract;
 use App\Domains\Users\Repositories\EloquentUserRepository;
 use Illuminate\Support\ServiceProvider;
-use RuntimeException;
 
 /**
  * Point unique de cablage entre contrats et implementations (inversion des
  * dependances, principe D de SOLID).
  *
- * Aucun service metier ne reference une classe concrete de persistance ni de
- * prestataire de paiement : tout passe par les interfaces listees ici. C'est
- * ce qui permet de substituer une implementation en test, ou de changer
- * d'agregateur de paiement, en touchant ce seul fichier.
+ * Aucun service metier ne reference une classe concrete de persistance : tout
+ * passe par les interfaces listees ici. C'est ce qui permet de substituer une
+ * implementation en test sans toucher au domaine.
+ *
+ * Le paiement suit une regle a part : deux moyens de paiement au choix de
+ * l'acheteur (Stripe, PayPal) ne peuvent pas se resoudre a un seul agregateur
+ * lie une fois pour toutes au demarrage. `PaymentGatewayResolver` (voir le
+ * domaine Payments) choisit donc la classe a l'usage, par requete — il n'a pas
+ * besoin d'etre declare ici, n'ayant aucune dependance a cabler.
  */
 class DomainServiceProvider extends ServiceProvider
 {
@@ -71,33 +74,6 @@ class DomainServiceProvider extends ServiceProvider
 
     public function register(): void
     {
-        $this->registerPaymentGateway();
-    }
-
-    /**
-     * Agregateur de paiement, choisi par configuration.
-     *
-     * Un pilote inconnu leve immediatement plutot que de retomber
-     * silencieusement sur la simulation : une plateforme qui croit encaisser
-     * alors qu'elle simule est le pire scenario imaginable, et il ne se
-     * decouvrirait qu'au premier rapprochement comptable.
-     */
-    private function registerPaymentGateway(): void
-    {
-        $this->app->singleton(PaymentGatewayContract::class, function (): PaymentGatewayContract {
-            $name = (string) config('promptory.gateway');
-            $driver = config("promptory.gateways.{$name}.driver");
-
-            if (! is_string($driver) || ! class_exists($driver)) {
-                throw new RuntimeException(
-                    "Agregateur de paiement « {$name} » inconnu. Verifiez PAYMENT_GATEWAY et config/promptory.php.",
-                );
-            }
-
-            /** @var PaymentGatewayContract $gateway */
-            $gateway = $this->app->make($driver);
-
-            return $gateway;
-        });
+        //
     }
 }
