@@ -2,6 +2,7 @@
 
 namespace App\Domains\Subscriptions\Http\Controllers;
 
+use App\Domains\Payments\Enums\PaymentMethod;
 use App\Domains\Subscriptions\Enums\SubscriptionType;
 use App\Domains\Subscriptions\Http\Requests\SubscribeRequest;
 use App\Domains\Subscriptions\Http\Resources\SubscriptionResource;
@@ -38,6 +39,7 @@ class SubscriptionController extends Controller
         $subscription = $this->subscriptions->subscribe(
             $request->user(),
             SubscriptionType::from($request->string('type')->toString()),
+            PaymentMethod::from($request->string('payment_method')->toString()),
             $request->string('payment_token')->toString() ?: null,
         );
 

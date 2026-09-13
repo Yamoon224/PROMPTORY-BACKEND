@@ -2,6 +2,7 @@
 
 namespace App\Domains\Sales\Http\Controllers;
 
+use App\Domains\Payments\Enums\PaymentMethod;
 use App\Domains\Sales\Http\Requests\PurchasePromptRequest;
 use App\Domains\Sales\Http\Resources\SaleResource;
 use App\Domains\Sales\Services\PurchaseService;
@@ -19,6 +20,7 @@ class PurchaseController extends Controller
         $sale = $this->purchases->purchasePrompt(
             $request->user(),
             $prompt,
+            PaymentMethod::from($request->string('payment_method')->toString()),
             $request->string('payment_token')->toString() ?: null,
             $request->string('client_reference')->toString() ?: null,
         );
@@ -31,6 +33,7 @@ class PurchaseController extends Controller
         $sale = $this->purchases->purchasePack(
             $request->user(),
             $pack,
+            PaymentMethod::from($request->string('payment_method')->toString()),
             $request->string('payment_token')->toString() ?: null,
             $request->string('client_reference')->toString() ?: null,
         );

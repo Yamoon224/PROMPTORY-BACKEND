@@ -5,10 +5,11 @@ namespace App\Domains\Sales\Services;
 use App\Domains\Audit\Enums\ActivityAction;
 use App\Domains\Audit\Services\ActivityLogger;
 use App\Domains\Packs\Enums\PackStatus;
-use App\Domains\Payments\Contracts\PaymentGatewayContract;
 use App\Domains\Payments\DTOs\PaymentIntent;
 use App\Domains\Payments\DTOs\PaymentResult;
 use App\Domains\Payments\Enums\GatewayStatus;
+use App\Domains\Payments\Enums\PaymentMethod;
+use App\Domains\Payments\Services\PaymentGatewayResolver;
 use App\Domains\Prompts\Enums\PromptStatus;
 use App\Domains\Sales\Contracts\SaleRepositoryContract;
 use App\Domains\Sales\Enums\PaymentStatus;
@@ -34,7 +35,7 @@ final class PurchaseService
 {
     public function __construct(
         private readonly SaleRepositoryContract $sales,
-        private readonly PaymentGatewayContract $gateway,
+        private readonly PaymentGatewayResolver $gateways,
         private readonly ActivityLogger $activity,
     ) {}
 
@@ -44,8 +45,13 @@ final class PurchaseService
      * @throws AlreadyPurchasedException
      * @throws PaymentFailedException
      */
-    public function purchasePrompt(User $buyer, Prompt $prompt, ?string $paymentToken, ?string $clientReference): Sale
-    {
+    public function purchasePrompt(
+        User $buyer,
+        Prompt $prompt,
+        PaymentMethod $method,
+        ?string $paymentToken,
+        ?string $clientReference,
+    ): Sale {
         $clientReference ??= (string) Str::uuid();
 
         if ($existing = $this->sales->findByClientReference($clientReference)) {
@@ -64,7 +70,7 @@ final class PurchaseService
             throw AlreadyPurchasedException::make();
         }
 
-        $result = $this->charge($clientReference, (float) $prompt->price, "Achat du prompt « {$prompt->title} »", $paymentToken);
+        $result = $this->charge($method, $clientReference, (float) $prompt->price, "Achat du prompt « {$prompt->title} »", $paymentToken);
 
         $sale = DB::transaction(fn () => $this->sales->create([
             ...$this->saleAttributes($clientReference, (float) $prompt->price, $result),
@@ -84,8 +90,13 @@ final class PurchaseService
      * @throws AlreadyPurchasedException
      * @throws PaymentFailedException
      */
-    public function purchasePack(User $buyer, Pack $pack, ?string $paymentToken, ?string $clientReference): Sale
-    {
+    public function purchasePack(
+        User $buyer,
+        Pack $pack,
+        PaymentMethod $method,
+        ?string $paymentToken,
+        ?string $clientReference,
+    ): Sale {
         $clientReference ??= (string) Str::uuid();
 
         if ($existing = $this->sales->findByClientReference($clientReference)) {
@@ -104,7 +115,7 @@ final class PurchaseService
             throw AlreadyPurchasedException::make();
         }
 
-        $result = $this->charge($clientReference, (float) $pack->price, "Achat du pack « {$pack->title} »", $paymentToken);
+        $result = $this->charge($method, $clientReference, (float) $pack->price, "Achat du pack « {$pack->title} »", $paymentToken);
 
         $sale = DB::transaction(fn () => $this->sales->create([
             ...$this->saleAttributes($clientReference, (float) $pack->price, $result),
@@ -117,9 +128,9 @@ final class PurchaseService
     }
 
     /** @throws PaymentFailedException */
-    private function charge(string $reference, float $amount, string $description, ?string $paymentToken): PaymentResult
+    private function charge(PaymentMethod $method, string $reference, float $amount, string $description, ?string $paymentToken): PaymentResult
     {
-        $result = $this->gateway->charge(new PaymentIntent(
+        $result = $this->gateways->resolve($method)->charge(new PaymentIntent(
             reference: $reference,
             amount: $amount,
             currency: 'EUR',

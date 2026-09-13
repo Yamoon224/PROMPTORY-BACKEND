@@ -17,6 +17,7 @@ class SubscribeRequest extends FormRequest
     {
         return [
             'type' => ['required', Rule::in(['creator_premium', 'extension_premium'])],
+            'payment_method' => ['required', Rule::in(['stripe', 'paypal'])],
             'payment_token' => ['nullable', 'string'],
         ];
     }

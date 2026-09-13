@@ -2,9 +2,10 @@
 
 namespace App\Domains\Subscriptions\Services;
 
-use App\Domains\Payments\Contracts\PaymentGatewayContract;
 use App\Domains\Payments\DTOs\PaymentIntent;
 use App\Domains\Payments\Enums\GatewayStatus;
+use App\Domains\Payments\Enums\PaymentMethod;
+use App\Domains\Payments\Services\PaymentGatewayResolver;
 use App\Domains\Sales\Exceptions\PaymentFailedException;
 use App\Domains\Shared\Exceptions\OwnershipViolationException;
 use App\Domains\Subscriptions\Contracts\SubscriptionRepositoryContract;
@@ -29,7 +30,7 @@ final class SubscriptionService
 {
     public function __construct(
         private readonly SubscriptionRepositoryContract $subscriptions,
-        private readonly PaymentGatewayContract $gateway,
+        private readonly PaymentGatewayResolver $gateways,
     ) {}
 
     /**
@@ -54,7 +55,7 @@ final class SubscriptionService
      * @throws AlreadySubscribedException
      * @throws PaymentFailedException
      */
-    public function subscribe(User $user, SubscriptionType $type, ?string $paymentToken): Subscription
+    public function subscribe(User $user, SubscriptionType $type, PaymentMethod $method, ?string $paymentToken): Subscription
     {
         if ($this->subscriptions->findActive($user->id, $type) !== null) {
             throw AlreadySubscribedException::make($type->value);
@@ -64,7 +65,7 @@ final class SubscriptionService
         $price = (float) $plan['price'];
         $durationDays = (int) $plan['duration_days'];
 
-        $result = $this->gateway->charge(new PaymentIntent(
+        $result = $this->gateways->resolve($method)->charge(new PaymentIntent(
             reference: sprintf('sub-%d-%s-%s', $user->id, $type->value, now()->timestamp),
             amount: $price,
             currency: 'EUR',
