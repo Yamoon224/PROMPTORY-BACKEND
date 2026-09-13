@@ -486,9 +486,32 @@ paths:
           application/json:
             schema:
               type: object
+              required: [payment_method]
               properties:
-                payment_token: { type: string, nullable: true, description: "Jeton du SDK du prestataire (Stripe.js…), jamais un numero de carte." }
+                payment_method: { $ref: '#/components/schemas/PaymentMethod' }
+                payment_token: { type: string, nullable: true, description: "Jeton du SDK du prestataire (PaymentMethod Stripe.js, commande PayPal approuvee…), jamais un numero de carte." }
                 client_reference: { type: string, nullable: true, description: "Rend la requete rejouable sans double debit." }
+      responses:
+        "201": { description: Vente enregistree }
+        "402": { description: "Paiement refuse (`payment_failed`)" }
+        "409": { description: "`already_purchased` ou `item_not_purchasable`" }
+        "422": { description: "`cannot_purchase_own_item`" }
+
+  /packs/{pack}/purchase:
+    post:
+      tags: [Achats]
+      summary: Acheter un pack
+      parameters: [{ $ref: '#/components/parameters/PackId' }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payment_method]
+              properties:
+                payment_method: { $ref: '#/components/schemas/PaymentMethod' }
+                payment_token: { type: string, nullable: true }
+                client_reference: { type: string, nullable: true }
       responses:
         "201": { description: Vente enregistree }
         "402": { description: "Paiement refuse (`payment_failed`)" }
@@ -534,9 +557,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [type]
+              required: [type, payment_method]
               properties:
                 type: { $ref: '#/components/schemas/SubscriptionType' }
+                payment_method: { $ref: '#/components/schemas/PaymentMethod' }
                 payment_token: { type: string, nullable: true }
       responses:
         "201": { description: Abonnement active }
@@ -726,6 +750,11 @@ components:
     SubscriptionType:
       type: string
       enum: [creator_premium, extension_premium]
+
+    PaymentMethod:
+      type: string
+      enum: [stripe, paypal]
+      description: Moyen de paiement choisi par l'acheteur.
 
     User:
       type: object
