@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Domains\Prompts\Enums\PromptStatus;
+use Database\Factories\PromptFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -28,6 +30,9 @@ use Illuminate\Support\Carbon;
  */
 class Prompt extends Model
 {
+    /** @use HasFactory<PromptFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'user_id', 'folder_id', 'title', 'slug', 'content', 'price', 'status',
         'reviewed_by', 'reviewed_at', 'rejection_reason', 'views_count', 'downloads_count',
