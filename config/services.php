@@ -35,4 +35,24 @@ return [
         ],
     ],
 
+    /*
+     | Sans cle configuree, `StripePaymentGateway` rejoue le meme cycle que
+     | l'agregateur simule (voir sa methode `simulate()`) : le poste de
+     | developpement fonctionne sans compte Stripe. Une cle de test (`sk_test_…`)
+     | suffit a basculer sur de vrais appels a l'API Stripe, en mode bac a sable.
+     */
+    'stripe' => [
+        'secret' => env('STRIPE_SECRET'),
+    ],
+
+    /*
+     | Memes garanties que Stripe ci-dessus : sans identifiants, `PaypalPaymentGateway`
+     | simule le paiement plutot que d'appeler l'API PayPal.
+     */
+    'paypal' => [
+        'client_id' => env('PAYPAL_CLIENT_ID'),
+        'secret' => env('PAYPAL_SECRET'),
+        'mode' => env('PAYPAL_MODE', 'sandbox'),
+    ],
+
 ];
