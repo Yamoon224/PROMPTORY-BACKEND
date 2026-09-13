@@ -2,6 +2,7 @@
 
 use App\Domains\Audit\Http\Controllers\ActivityLogController;
 use App\Domains\Auth\Http\Controllers\AuthController;
+use App\Domains\Auth\Http\Controllers\PasswordResetController;
 use App\Domains\Shared\Http\Controllers\HealthController;
 use App\Domains\Catalog\Http\Controllers\CategoryController;
 use App\Domains\Catalog\Http\Controllers\IaModelController;
@@ -15,6 +16,7 @@ use App\Domains\Reviews\Http\Controllers\ReviewController;
 use App\Domains\Sales\Http\Controllers\PurchaseController;
 use App\Domains\Sales\Http\Controllers\SaleController;
 use App\Domains\Subscriptions\Http\Controllers\SubscriptionController;
+use App\Domains\Users\Http\Controllers\ProfileController;
 use App\Domains\Users\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +37,8 @@ Route::get('/health', HealthController::class);
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
+Route::post('/reset-password', [PasswordResetController::class, 'reset']);
 
 // --- Marketplace publique -----------------------------------------------------
 
@@ -51,6 +55,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- Compte -----------------------------------------------------------
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::put('/me', [ProfileController::class, 'update']);
+    Route::put('/me/password', [ProfileController::class, 'updatePassword']);
 
     // --- Mes prompts (dashboard createur) ----------------------------------
     //
