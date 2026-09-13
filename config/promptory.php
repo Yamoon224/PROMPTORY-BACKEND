@@ -16,6 +16,13 @@ use App\Domains\Payments\Gateways\SimulatedPaymentGateway;
 
 return [
     /*
+     | URL de base du frontend Next.js. Utilisee pour construire le lien de
+     | reinitialisation de mot de passe envoye par e-mail : l'API n'a pas de
+     | page web propre, ce lien doit pointer vers l'application cliente.
+     */
+    'frontend_url' => rtrim((string) env('FRONTEND_URL', 'http://localhost:3000'), '/'),
+
+    /*
      | Commission prelevee sur chaque vente de prompt ou de pack, en
      | pourcentage. Le cahier des charges autorise une fourchette de 10 a 20 % ;
      | un taux unique et configurable est plus sur qu'un taux choisi a la volee

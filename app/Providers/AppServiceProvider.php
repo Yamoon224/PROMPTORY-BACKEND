@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\PersonalAccessToken;
+use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Sanctum;
@@ -17,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
+        $this->configurePasswordResetUrl();
 
         /*
          * Les relations doivent etre chargees explicitement.
@@ -35,5 +38,24 @@ class AppServiceProvider extends ServiceProvider
         // Une ecriture sur un attribut absent de `$fillable` est une erreur de
         // developpement, pas une donnee a ignorer en silence.
         Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
+    }
+
+    /**
+     * L'API n'a aucune page web de reinitialisation : le lien envoye par
+     * e-mail doit pointer vers l'application Next.js, jamais vers une route
+     * nommee `password.reset` qui n'existe pas cote backend.
+     */
+    private function configurePasswordResetUrl(): void
+    {
+        ResetPassword::createUrlUsing(function (User $user, string $token): string {
+            $frontendUrl = (string) config('promptory.frontend_url');
+
+            return sprintf(
+                '%s/reinitialiser-mot-de-passe?token=%s&email=%s',
+                $frontendUrl,
+                $token,
+                urlencode($user->email),
+            );
+        });
     }
 }
