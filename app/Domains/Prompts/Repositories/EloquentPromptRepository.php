@@ -51,13 +51,19 @@ final class EloquentPromptRepository implements PromptRepositoryContract
 
     public function findOrFail(int $id): Prompt
     {
-        return Prompt::query()->with(['user:id,name', 'tags', 'categories', 'iaModels', 'attachments'])->findOrFail($id);
+        return Prompt::query()
+            ->with(['user:id,name', 'tags', 'categories', 'iaModels', 'attachments'])
+            ->withCount('reviews')
+            ->withAvg('reviews', 'rating')
+            ->findOrFail($id);
     }
 
     public function findBySlug(string $slug): Prompt
     {
         return Prompt::query()
             ->with(['user:id,name', 'tags', 'categories', 'iaModels', 'attachments', 'reviews.user:id,name'])
+            ->withCount('reviews')
+            ->withAvg('reviews', 'rating')
             ->where('slug', $slug)
             ->firstOrFail();
     }

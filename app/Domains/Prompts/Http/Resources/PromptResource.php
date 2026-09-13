@@ -39,11 +39,14 @@ class PromptResource extends JsonResource
             'rejection_reason' => $this->when($this->status->value === 'draft', $this->rejection_reason),
             'views_count' => $this->views_count,
             'downloads_count' => $this->downloads_count,
-            'reviews_count' => $this->whenCounted('reviews'),
-            'average_rating' => $this->when(
-                $this->reviews_avg_rating !== null,
-                fn () => round((float) $this->reviews_avg_rating, 1),
-            ),
+            // Champs toujours presents (jamais `when()`/`whenCounted()`) : le
+            // contrat d'API les declare `nullable`, pas absents. Un champ tantot
+            // present tantot manquant selon la requete d'origine (avec ou sans
+            // `withCount`) est le genre d'incoherence qu'un frontend type
+            // decouvre en production par un `undefined.toFixed is not a
+            // function`, jamais en developpement.
+            'reviews_count' => (int) ($this->reviews_count ?? 0),
+            'average_rating' => $this->reviews_avg_rating !== null ? round((float) $this->reviews_avg_rating, 1) : null,
             'creator' => $this->whenLoaded('user', fn () => ['id' => $this->user->id, 'name' => $this->user->name]),
             'folder_id' => $this->folder_id,
             'tags' => $this->whenLoaded('tags', fn () => $this->tags->map(fn ($tag) => [
