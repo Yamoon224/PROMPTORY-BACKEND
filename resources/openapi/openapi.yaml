@@ -1,0 +1,773 @@
+openapi: 3.0.3
+
+info:
+  title: Promptory - API REST
+  version: "1.0.0"
+  description: |
+    API de la marketplace de prompts IA : catalogue public, dossiers et
+    prompts d'un createur, achats, packs, abonnements premium et
+    back-office de moderation.
+
+    ## Garanties du domaine
+
+    - **Le contenu integral d'un prompt payant n'est jamais renvoye** tant que
+      le lecteur ne l'a pas achete (ou n'en est pas le createur). `GET
+      /prompts/{slug}` renvoie `content: null` dans ce cas.
+    - **Un achat est rejouable.** Chaque achat porte une `client_reference` :
+      un envoi rejoue (double clic, coupure reseau) renvoie la vente deja
+      enregistree plutot que de debiter l'acheteur une seconde fois.
+    - **Un compte qui a vendu ne se supprime pas.** Il n'y a pas de
+      desactivation en cascade des ventes passees : l'historique de commission
+      reste explicable.
+    - **Un pack n'a pas d'etat brouillon.** Il entre directement en attente de
+      validation (voir schema de donnees), la moderation portant sur le prix
+      et la selection plutot que sur un contenu a relire.
+
+    ## Conventions
+
+    - Identifiants numeriques auto-incrementes. Les ressources publiques
+      (prompts, packs, categories, tags, outils IA) sont aussi adressables par
+      un `slug` stable, genere une fois a la creation.
+    - Montants : **decimaux en euros (EUR)**, deux decimales.
+    - Ressource unique : `{ "data": { … } }` ; collection paginee :
+      `{ "data": [ … ], "links": { … }, "meta": { … } }`.
+    - Erreur : `{ "message", "error_code", "context" }`, plus `errors` par
+      champ en 422. Le client doit router sur `error_code`, stable, jamais sur
+      `message`.
+
+    ## Authentification
+
+    Jeton Bearer (Laravel Sanctum), obtenu par `POST /login` ou `POST
+    /register`. La marketplace publique (recherche, fiche prompt, catalogue)
+    ne demande aucun jeton ; toute action personnelle (creer, acheter, noter)
+    en demande un ; la moderation et le back-office demandent en plus une
+    permission (`prompts.moderate` ou `platform.manage`).
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8000/api
+    description: Environnement local
+
+tags:
+  - name: Systeme
+  - name: Authentification
+  - name: Marketplace
+    description: Catalogue public de prompts et de packs.
+  - name: Referentiel
+    description: Categories, tags, outils IA.
+  - name: Prompts
+    description: Creation, edition et cycle de vie d'un prompt par son createur.
+  - name: Moderation
+  - name: Dossiers
+  - name: Packs
+  - name: Achats
+  - name: Abonnements
+  - name: Avis
+  - name: Utilisateurs
+  - name: Audit
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags: [Systeme]
+      summary: Sonde de sante (base de donnees)
+      security: []
+      responses:
+        "200": { description: Service operationnel }
+        "503": { description: Service degrade }
+
+  # --- Authentification ---------------------------------------------------------
+
+  /register:
+    post:
+      tags: [Authentification]
+      summary: Inscription publique (role `user`)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, password_confirmation]
+              properties:
+                name: { type: string, example: "Camille Createur" }
+                email: { type: string, format: email }
+                password: { type: string, format: password, minLength: 8 }
+                password_confirmation: { type: string, format: password }
+      responses:
+        "201": { description: Compte cree, jeton emis, $ref: '#/components/responses/AuthResponse' }
+        "422": { $ref: '#/components/responses/ValidationError' }
+
+  /login:
+    post:
+      tags: [Authentification]
+      summary: Connexion et emission d'un jeton
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+                device_name: { type: string, example: navigateur-chrome }
+      responses:
+        "200": { $ref: '#/components/responses/AuthResponse' }
+        "422": { $ref: '#/components/responses/ValidationError' }
+
+  /logout:
+    post:
+      tags: [Authentification]
+      summary: Revoque le jeton courant
+      responses:
+        "204": { description: Deconnecte }
+
+  /me:
+    get:
+      tags: [Authentification]
+      summary: Compte courant
+      responses:
+        "200":
+          description: Compte courant
+          content:
+            application/json:
+              schema: { type: object, properties: { data: { $ref: '#/components/schemas/User' } } }
+
+  # --- Marketplace publique -----------------------------------------------------
+
+  /prompts:
+    get:
+      tags: [Marketplace]
+      summary: Parcourir les prompts publies
+      security: []
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: category, in: query, schema: { type: string }, description: slug de categorie }
+        - { name: tag, in: query, schema: { type: string }, description: slug de tag }
+        - { name: ia_model, in: query, schema: { type: string }, description: slug d'outil IA }
+        - { name: free, in: query, schema: { type: boolean } }
+        - { name: min_price, in: query, schema: { type: number } }
+        - { name: max_price, in: query, schema: { type: number } }
+        - { name: sort, in: query, schema: { type: string, enum: [title, price, created_at, views, downloads] } }
+        - { name: direction, in: query, schema: { type: string, enum: [asc, desc] } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+      responses:
+        "200": { $ref: '#/components/responses/PromptCollection' }
+    post:
+      tags: [Prompts]
+      summary: Creer un prompt (brouillon)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PromptInput' }
+      responses:
+        "201": { $ref: '#/components/responses/PromptResource' }
+        "422": { $ref: '#/components/responses/ValidationError' }
+
+  /prompts/{slug}:
+    get:
+      tags: [Marketplace]
+      summary: Fiche publique d'un prompt (contenu masque si non accessible)
+      security: []
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { $ref: '#/components/responses/PromptResource' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /prompts/{prompt}:
+    put:
+      tags: [Prompts]
+      summary: Modifier un prompt en brouillon
+      parameters: [{ $ref: '#/components/parameters/PromptId' }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PromptInput' }
+      responses:
+        "200": { $ref: '#/components/responses/PromptResource' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "409": { description: "Prompt non modifiable dans son etat actuel (`prompt_not_editable`)" }
+    delete:
+      tags: [Prompts]
+      summary: Supprimer un prompt
+      parameters: [{ $ref: '#/components/parameters/PromptId' }]
+      responses:
+        "204": { description: Supprime }
+
+  /my/prompts:
+    get:
+      tags: [Prompts]
+      summary: Mes prompts, tous statuts confondus
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/PromptStatus' } }
+        - { name: folder_id, in: query, schema: { type: integer } }
+        - { $ref: '#/components/parameters/Page' }
+      responses:
+        "200": { $ref: '#/components/responses/PromptCollection' }
+
+  /prompts/{prompt}/submit:
+    post:
+      tags: [Prompts]
+      summary: Soumettre un brouillon a validation
+      parameters: [{ $ref: '#/components/parameters/PromptId' }]
+      responses:
+        "200": { $ref: '#/components/responses/PromptResource' }
+        "409": { description: "`prompt_not_submittable`" }
+
+  /prompts/{prompt}/archive:
+    post:
+      tags: [Prompts]
+      summary: Retirer un prompt publie de la marketplace
+      parameters: [{ $ref: '#/components/parameters/PromptId' }]
+      responses:
+        "200": { $ref: '#/components/responses/PromptResource' }
+
+  /prompts/{prompt}/unarchive:
+    post:
+      tags: [Prompts]
+      summary: Republier un prompt archive
+      parameters: [{ $ref: '#/components/parameters/PromptId' }]
+      responses:
+        "200": { $ref: '#/components/responses/PromptResource' }
+
+  # --- Moderation -----------------------------------------------------------
+
+  /moderation/prompts:
+    get:
+      tags: [Moderation]
+      summary: File d'attente de validation
+      responses:
+        "200": { $ref: '#/components/responses/PromptCollection' }
+
+  /moderation/prompts/{prompt}/approve:
+    post:
+      tags: [Moderation]
+      summary: Approuver un prompt (publication)
+      parameters: [{ $ref: '#/components/parameters/PromptId' }]
+      responses:
+        "200": { $ref: '#/components/responses/PromptResource' }
+        "409": { description: "`prompt_not_moderatable`" }
+
+  /moderation/prompts/{prompt}/reject:
+    post:
+      tags: [Moderation]
+      summary: Rejeter un prompt (retour en brouillon)
+      parameters: [{ $ref: '#/components/parameters/PromptId' }]
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, required: [reason], properties: { reason: { type: string } } }
+      responses:
+        "200": { $ref: '#/components/responses/PromptResource' }
+
+  /moderation/packs:
+    get:
+      tags: [Moderation]
+      summary: File d'attente de validation des packs
+      responses:
+        "200": { description: Collection de packs }
+
+  /moderation/packs/{pack}/approve:
+    post:
+      tags: [Moderation]
+      summary: Approuver un pack
+      parameters: [{ $ref: '#/components/parameters/PackId' }]
+      responses:
+        "200": { description: Pack publie }
+
+  /moderation/packs/{pack}/reject:
+    post:
+      tags: [Moderation]
+      summary: Rejeter un pack (archive avec motif)
+      parameters: [{ $ref: '#/components/parameters/PackId' }]
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, required: [reason], properties: { reason: { type: string } } }
+      responses:
+        "200": { description: Pack archive }
+
+  # --- Referentiel ------------------------------------------------------------
+
+  /categories:
+    get:
+      tags: [Referentiel]
+      summary: Lister les categories
+      security: []
+      parameters:
+        - { name: all, in: query, schema: { type: boolean }, description: "true : liste non paginee pour un selecteur" }
+        - { $ref: '#/components/parameters/Search' }
+      responses:
+        "200": { description: Collection de categories }
+    post:
+      tags: [Referentiel]
+      summary: Creer une categorie (back-office)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties: { name: { type: string }, description: { type: string }, parent_id: { type: integer, nullable: true } }
+      responses:
+        "201": { description: Categorie creee }
+
+  /categories/{category}:
+    put:
+      tags: [Referentiel]
+      summary: Modifier une categorie (back-office)
+      parameters: [{ name: category, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Categorie modifiee }
+    delete:
+      tags: [Referentiel]
+      summary: Supprimer une categorie inutilisee (back-office)
+      parameters: [{ name: category, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "204": { description: Supprimee }
+        "409": { description: "`resource_in_use`" }
+
+  /tags:
+    get:
+      tags: [Referentiel]
+      summary: Lister les tags
+      security: []
+      responses:
+        "200": { description: Collection de tags }
+    post:
+      tags: [Referentiel]
+      summary: Creer un tag (back-office)
+      responses:
+        "201": { description: Tag cree }
+
+  /ia-models:
+    get:
+      tags: [Referentiel]
+      summary: Lister les outils IA
+      security: []
+      responses:
+        "200": { description: Collection d'outils IA }
+    post:
+      tags: [Referentiel]
+      summary: Creer un outil IA (back-office)
+      responses:
+        "201": { description: Outil IA cree }
+
+  # --- Dossiers -----------------------------------------------------------------
+
+  /folders:
+    get:
+      tags: [Dossiers]
+      summary: Mes dossiers
+      responses:
+        "200": { description: Liste de dossiers }
+    post:
+      tags: [Dossiers]
+      summary: Creer un dossier
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties: { name: { type: string }, parent_id: { type: integer, nullable: true } }
+      responses:
+        "201": { description: Dossier cree }
+
+  /folders/{folder}:
+    put:
+      tags: [Dossiers]
+      summary: Renommer / deplacer un dossier
+      parameters: [{ name: folder, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Dossier modifie }
+    delete:
+      tags: [Dossiers]
+      summary: Supprimer un dossier vide
+      parameters: [{ name: folder, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "204": { description: Supprime }
+        "409": { description: "`folder_not_empty`" }
+
+  # --- Packs ----------------------------------------------------------------
+
+  /packs:
+    get:
+      tags: [Packs]
+      summary: Parcourir les packs publies
+      security: []
+      responses:
+        "200": { description: Collection de packs }
+    post:
+      tags: [Packs]
+      summary: Creer un pack (entre directement en attente de validation)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, price, prompts]
+              properties:
+                title: { type: string }
+                description: { type: string }
+                price: { type: number }
+                prompts: { type: array, items: { type: integer }, minItems: 1 }
+      responses:
+        "201": { description: Pack cree }
+        "422": { description: "`empty_pack` si `prompts` est vide" }
+
+  /packs/{slug}:
+    get:
+      tags: [Packs]
+      summary: Fiche publique d'un pack
+      security: []
+      parameters: [{ name: slug, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Pack }
+
+  /my/packs:
+    get:
+      tags: [Packs]
+      summary: Mes packs, tous statuts confondus
+      responses:
+        "200": { description: Collection de packs }
+
+  /packs/{pack}:
+    put:
+      tags: [Packs]
+      summary: Modifier un pack (en attente ou archive)
+      parameters: [{ $ref: '#/components/parameters/PackId' }]
+      responses:
+        "200": { description: Pack modifie }
+        "409": { description: "`pack_not_editable`" }
+    delete:
+      tags: [Packs]
+      summary: Supprimer un pack
+      parameters: [{ $ref: '#/components/parameters/PackId' }]
+      responses:
+        "204": { description: Supprime }
+
+  /packs/{pack}/archive:
+    post:
+      tags: [Packs]
+      summary: Retirer un pack publie
+      parameters: [{ $ref: '#/components/parameters/PackId' }]
+      responses:
+        "200": { description: Pack archive }
+
+  /packs/{pack}/resubmit:
+    post:
+      tags: [Packs]
+      summary: Repasser un pack archive en validation
+      parameters: [{ $ref: '#/components/parameters/PackId' }]
+      responses:
+        "200": { description: Pack en attente de validation }
+
+  # --- Achats -----------------------------------------------------------------
+
+  /prompts/{prompt}/purchase:
+    post:
+      tags: [Achats]
+      summary: Acheter un prompt payant
+      parameters: [{ $ref: '#/components/parameters/PromptId' }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payment_token: { type: string, nullable: true, description: "Jeton du SDK du prestataire (Stripe.js…), jamais un numero de carte." }
+                client_reference: { type: string, nullable: true, description: "Rend la requete rejouable sans double debit." }
+      responses:
+        "201": { description: Vente enregistree }
+        "402": { description: "Paiement refuse (`payment_failed`)" }
+        "409": { description: "`already_purchased` ou `item_not_purchasable`" }
+        "422": { description: "`cannot_purchase_own_item`" }
+
+  /my/purchases:
+    get:
+      tags: [Achats]
+      summary: Historique de mes achats
+      responses:
+        "200": { description: Collection de ventes }
+
+  /my/earnings:
+    get:
+      tags: [Achats]
+      summary: Mes ventes en tant que createur
+      responses:
+        "200": { description: Collection de ventes }
+
+  /sales:
+    get:
+      tags: [Achats]
+      summary: Toutes les ventes (back-office)
+      parameters:
+        - { name: payment_status, in: query, schema: { $ref: '#/components/schemas/PaymentStatus' } }
+      responses:
+        "200": { description: Collection de ventes }
+
+  # --- Abonnements --------------------------------------------------------------
+
+  /subscriptions:
+    get:
+      tags: [Abonnements]
+      summary: Tous les abonnements (back-office)
+      responses:
+        "200": { description: Collection d'abonnements }
+    post:
+      tags: [Abonnements]
+      summary: Souscrire un abonnement premium
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type: { $ref: '#/components/schemas/SubscriptionType' }
+                payment_token: { type: string, nullable: true }
+      responses:
+        "201": { description: Abonnement active }
+        "402": { description: "`payment_failed`" }
+        "409": { description: "`already_subscribed`" }
+
+  /my/subscriptions:
+    get:
+      tags: [Abonnements]
+      summary: Mes abonnements
+      responses:
+        "200": { description: Collection d'abonnements }
+
+  /subscriptions/{subscription}/cancel:
+    post:
+      tags: [Abonnements]
+      summary: Annuler un abonnement
+      parameters: [{ name: subscription, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Abonnement annule }
+
+  # --- Avis ---------------------------------------------------------------------
+
+  /prompts/id/{prompt}/reviews:
+    get:
+      tags: [Avis]
+      summary: Avis d'un prompt
+      security: []
+      parameters: [{ name: prompt, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Collection d'avis }
+    post:
+      tags: [Avis]
+      summary: Noter un prompt achete (ou gratuit)
+      parameters: [{ name: prompt, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating: { type: integer, minimum: 1, maximum: 5 }
+                comment: { type: string, nullable: true }
+      responses:
+        "201": { description: Avis enregistre (remplace le precedent) }
+        "403": { description: "`review_not_allowed`" }
+
+  /reviews/{review}:
+    delete:
+      tags: [Avis]
+      summary: Supprimer son avis
+      parameters: [{ name: review, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "204": { description: Supprime }
+
+  # --- Utilisateurs et audit ------------------------------------------------
+
+  /users:
+    get:
+      tags: [Utilisateurs]
+      summary: Lister les comptes (back-office)
+      responses:
+        "200": { description: Collection d'utilisateurs }
+    post:
+      tags: [Utilisateurs]
+      summary: Creer un compte (back-office)
+      responses:
+        "201": { description: Compte cree }
+
+  /users/{user}:
+    put:
+      tags: [Utilisateurs]
+      summary: Modifier un compte (back-office)
+      parameters: [{ name: user, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Compte modifie }
+    delete:
+      tags: [Utilisateurs]
+      summary: Supprimer un compte (back-office)
+      parameters: [{ name: user, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "204": { description: Supprime }
+        "409": { description: "`cannot_delete_own_account` ou `user_has_sales`" }
+
+  /activity-log:
+    get:
+      tags: [Audit]
+      summary: Journal d'activite (back-office)
+      responses:
+        "200": { description: Collection d'evenements }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum personal access token
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1 }
+    PerPage:
+      name: per_page
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 15 }
+    Search:
+      name: search
+      in: query
+      schema: { type: string }
+    PromptId:
+      name: prompt
+      in: path
+      required: true
+      schema: { type: integer }
+      description: Identifiant numerique du prompt (pas son slug).
+    PackId:
+      name: pack
+      in: path
+      required: true
+      schema: { type: integer }
+
+  responses:
+    AuthResponse:
+      description: Compte et jeton d'acces
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data: { $ref: '#/components/schemas/User' }
+              token: { type: string }
+    PromptResource:
+      description: Prompt
+      content:
+        application/json:
+          schema: { type: object, properties: { data: { $ref: '#/components/schemas/Prompt' } } }
+    PromptCollection:
+      description: Collection paginee de prompts
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data: { type: array, items: { $ref: '#/components/schemas/Prompt' } }
+              links: { type: object }
+              meta: { type: object }
+    ValidationError:
+      description: Erreur de validation
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string }
+              error_code: { type: string, example: validation_failed }
+              errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+    Forbidden:
+      description: Action refusee
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorBody' }
+    NotFound:
+      description: Ressource introuvable
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorBody' }
+
+  schemas:
+    ErrorBody:
+      type: object
+      properties:
+        message: { type: string }
+        error_code: { type: string }
+        context: { type: object }
+
+    PromptStatus:
+      type: string
+      enum: [draft, pending_validation, published, archived]
+
+    PaymentStatus:
+      type: string
+      enum: [pending, completed, failed]
+
+    SubscriptionType:
+      type: string
+      enum: [creator_premium, extension_premium]
+
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [admin, user] }
+        status: { type: string, enum: [active, inactive] }
+        permissions: { type: array, items: { type: string } }
+
+    PromptInput:
+      type: object
+      required: [title, content]
+      properties:
+        title: { type: string, maxLength: 255 }
+        content: { type: string }
+        price: { type: number, minimum: 0, default: 0 }
+        folder_id: { type: integer, nullable: true }
+        tags: { type: array, items: { type: integer } }
+        categories: { type: array, items: { type: integer } }
+        ia_models: { type: array, items: { type: integer } }
+
+    Prompt:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        slug: { type: string }
+        content:
+          type: string
+          nullable: true
+          description: "null si le lecteur n'a pas achete ce prompt payant"
+        price: { type: number }
+        is_free: { type: boolean }
+        status: { $ref: '#/components/schemas/PromptStatus' }
+        views_count: { type: integer }
+        downloads_count: { type: integer }
+        reviews_count: { type: integer }
+        average_rating: { type: number, nullable: true }
+        creator: { type: object, properties: { id: { type: integer }, name: { type: string } } }
+        tags: { type: array, items: { type: object } }
+        categories: { type: array, items: { type: object } }
+        ia_models: { type: array, items: { type: object } }
+        created_at: { type: string, format: date-time }
