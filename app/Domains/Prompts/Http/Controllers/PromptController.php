@@ -30,7 +30,15 @@ class PromptController extends Controller
             $request->integer('per_page', 15),
         );
 
-        return PromptResource::collection($prompts)->each(fn (PromptResource $resource) => $resource->hideContent());
+        // `AnonymousResourceCollection` n'a pas de veritable `each()` : l'appel
+        // serait devie par `JsonResource::__call` vers le paginateur enveloppe,
+        // dont le `each()` renvoie une simple Collection — pas la ressource. On
+        // parcourt donc directement la collection de ressources deja construite,
+        // puis on renvoie cette meme instance.
+        $resources = PromptResource::collection($prompts);
+        $resources->collection->each(fn (PromptResource $resource) => $resource->hideContent());
+
+        return $resources;
     }
 
     /** Mes prompts (dashboard createur), tous statuts confondus. */
