@@ -136,5 +136,7 @@ class DatabaseSeeder extends Seeder
 
             $pack->prompts()->attach($selection->pluck('id')->all());
         }
+
+        $this->call(SubscriptionSeeder::class);
     }
 }
