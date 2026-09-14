@@ -26,14 +26,14 @@
         :root, .swagger-ui { color-scheme: light; }
 
         :root {
-            --violet: #6d5ef8;
-            --violet-dark: #4735c2;
-            --violet-soft: #f2f1fe;
+            --violet: #4a47c1;
+            --violet-dark: #343085;
+            --violet-soft: #f1f0fa;
             --bg: #fafafa;
             --surface: #ffffff;
             --border: #e4e4e8;
             --border-strong: #d4d4db;
-            --text: #18181b;
+            --text: #0a0a0f;
             --muted: #5b6270;
         }
 
@@ -67,7 +67,7 @@
             height: 3px;
             margin: .9rem 0 1rem;
             border-radius: 999px;
-            background: linear-gradient(135deg, #8b7cf4, var(--violet-dark));
+            background: linear-gradient(135deg, #6e6ccd, var(--violet-dark));
         }
 
         .masthead p { margin: 0; max-width: 42rem; color: var(--muted); }
@@ -77,7 +77,7 @@
         .swagger-ui .topbar { display: none; }
         .swagger-ui .info { margin: 24px 0; }
         .swagger-ui .scheme-container { background: transparent; box-shadow: none; padding: 0; }
-        .swagger-ui .opblock.opblock-get { border-color: var(--border-strong); background: rgba(109,94,248,.04); }
+        .swagger-ui .opblock.opblock-get { border-color: var(--border-strong); background: rgba(74,71,193,.04); }
         .swagger-ui .opblock.opblock-post { border-color: var(--border-strong); background: rgba(22,163,74,.04); }
         .swagger-ui .opblock-tag { border-color: var(--border); }
         .swagger-ui .btn.authorize { border-color: var(--violet); color: var(--violet-dark); }

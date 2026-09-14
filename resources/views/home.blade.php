@@ -6,9 +6,9 @@
     <title>API Promptory</title>
     <style>
         :root {
-            --violet: #6d5ef8;
-            --violet-dark: #4735c2;
-            --ink: #18181b;
+            --violet: #4a47c1;
+            --violet-dark: #343085;
+            --ink: #0a0a0f;
             --muted: #6b6b76;
             --line: #e4e4e8;
             --surface: #ffffff;
@@ -42,7 +42,7 @@
             display: inline-block;
             padding: .25rem .6rem;
             border-radius: 2px;
-            background: linear-gradient(135deg, #8b7cf4 0%, var(--violet) 48%, var(--violet-dark) 100%);
+            background: linear-gradient(135deg, #6e6ccd 0%, var(--violet) 48%, var(--violet-dark) 100%);
             color: #fff;
             font-size: .7rem;
             font-weight: 600;
@@ -58,7 +58,7 @@
             height: 3px;
             margin: .75rem 0 1.25rem;
             border-radius: 999px;
-            background: linear-gradient(135deg, #8b7cf4, var(--violet-dark));
+            background: linear-gradient(135deg, #6e6ccd, var(--violet-dark));
         }
 
         p { color: var(--muted); margin: 0 0 1rem; }
@@ -73,7 +73,7 @@
 
         .card > div { padding: 1.1rem 1.25rem; }
         .card > div + div { border-top: 1px solid var(--line); }
-        .card .accent { padding: 0; height: 3px; background: linear-gradient(135deg, #8b7cf4, var(--violet-dark)); }
+        .card .accent { padding: 0; height: 3px; background: linear-gradient(135deg, #6e6ccd, var(--violet-dark)); }
 
         h2 { margin: 0 0 .4rem; font-size: .95rem; }
 
@@ -82,7 +82,7 @@
         code {
             padding: .1rem .35rem;
             border-radius: 2px;
-            background: rgba(109, 94, 248, .12);
+            background: rgba(74, 71, 193, .12);
             font-family: ui-monospace, "Cascadia Code", Menlo, monospace;
             font-size: .85em;
         }
