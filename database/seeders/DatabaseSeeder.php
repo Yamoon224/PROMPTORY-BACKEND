@@ -12,6 +12,7 @@ use App\Models\Review;
 use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
@@ -76,7 +77,7 @@ class DatabaseSeeder extends Seeder
 
         // --- Prompts (200+) ---------------------------------------------------
 
-        /** @var \Illuminate\Support\Collection<int, Prompt> $prompts */
+        /** @var Collection<int, Prompt> $prompts */
         $prompts = Prompt::factory()
             ->count(210)
             ->sequence(fn () => ['user_id' => $creators->random()->id])
