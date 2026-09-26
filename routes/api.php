@@ -3,6 +3,7 @@
 use App\Domains\Audit\Http\Controllers\ActivityLogController;
 use App\Domains\Auth\Http\Controllers\AuthController;
 use App\Domains\Auth\Http\Controllers\PasswordResetController;
+use App\Domains\Marketing\Http\Controllers\NewsletterController;
 use App\Domains\Shared\Http\Controllers\HealthController;
 use App\Domains\Catalog\Http\Controllers\CategoryController;
 use App\Domains\Catalog\Http\Controllers\IaModelController;
@@ -39,6 +40,7 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
 Route::post('/reset-password', [PasswordResetController::class, 'reset']);
+Route::post('/newsletter/subscribe', [NewsletterController::class, 'store'])->middleware('throttle:5,1');
 
 // --- Marketplace publique -----------------------------------------------------
 
