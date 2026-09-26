@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
  * Administration des comptes.
  *
  * **Un compte qui a vendu ne se supprime pas.** Le supprimer laisserait des
- * ventes sans createur — precisement l'information qu'on cherche quand une
+ * ventes sans createur - precisement l'information qu'on cherche quand une
  * commission ne tombe pas juste en fin de mois.
  *
  * **Personne ne supprime son propre compte.** Un administrateur qui s'efface

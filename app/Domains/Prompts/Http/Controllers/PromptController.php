@@ -32,7 +32,7 @@ class PromptController extends Controller
 
         // `AnonymousResourceCollection` n'a pas de veritable `each()` : l'appel
         // serait devie par `JsonResource::__call` vers le paginateur enveloppe,
-        // dont le `each()` renvoie une simple Collection — pas la ressource. On
+        // dont le `each()` renvoie une simple Collection - pas la ressource. On
         // parcourt donc directement la collection de ressources deja construite,
         // puis on renvoie cette meme instance.
         $resources = PromptResource::collection($prompts);

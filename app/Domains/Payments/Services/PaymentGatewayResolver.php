@@ -14,7 +14,7 @@ use RuntimeException;
  * l'acheteur (Stripe, PayPal) : un unique agregateur lie par conteneur au
  * demarrage (comme le fait un site a moyen de paiement unique) ne peut pas
  * exprimer ce choix. Chaque achat ou abonnement resout donc son agregateur
- * ici, par le moyen de paiement demande dans la requete — jamais par un nom
+ * ici, par le moyen de paiement demande dans la requete - jamais par un nom
  * de classe en dur dans un service metier.
  */
 final class PaymentGatewayResolver

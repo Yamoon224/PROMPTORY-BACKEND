@@ -25,7 +25,7 @@ class AppServiceProvider extends ServiceProvider
          * Les relations doivent etre chargees explicitement.
          *
          * Sans cela, un acces a une relation non chargee declenche une requete
-         * silencieuse — par ligne. Sur une liste de vingt prompts qui affiche
+         * silencieuse - par ligne. Sur une liste de vingt prompts qui affiche
          * son createur, ses tags et ses categories, cela fait soixante
          * requetes invisibles, et le probleme ne se voit qu'en production.
          *

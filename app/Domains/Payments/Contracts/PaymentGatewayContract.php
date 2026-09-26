@@ -8,7 +8,7 @@ use App\Domains\Payments\DTOs\PaymentResult;
 /**
  * Agregateur de paiement (Stripe, PayPal…).
  *
- * Le domaine ne connait ni Stripe ni PayPal — il connait une intention
+ * Le domaine ne connait ni Stripe ni PayPal - il connait une intention
  * d'encaissement et un resultat. Changer de prestataire consiste a ecrire une
  * classe et a changer une ligne de `config/promptory.php` : aucun service
  * metier, aucun controleur n'est touche.

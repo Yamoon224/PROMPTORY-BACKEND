@@ -14,7 +14,7 @@ use Throwable;
  *
  * `paymentToken` est l'identifiant de la commande PayPal deja approuvee par
  * l'acheteur cote client (PayPal JS SDK) : ce gateway ne fait que la
- * capturer, jamais que la creer — l'approbation ne peut se faire que dans le
+ * capturer, jamais que la creer - l'approbation ne peut se faire que dans le
  * navigateur de l'acheteur, aupres de PayPal lui-meme.
  *
  * **Sans identifiants configures** (`PAYPAL_CLIENT_ID`/`PAYPAL_SECRET`), le
@@ -120,7 +120,7 @@ final class PaypalPaymentGateway implements PaymentGatewayContract
             gateway: $this->name(),
             externalReference: $reference,
             status: $isFailing ? GatewayStatus::Failed : GatewayStatus::Succeeded,
-            failureReason: $isFailing ? 'Paiement refuse (simulation — aucun compte PayPal configure).' : null,
+            failureReason: $isFailing ? 'Paiement refuse (simulation - aucun compte PayPal configure).' : null,
         );
     }
 }

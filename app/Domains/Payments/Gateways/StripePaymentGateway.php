@@ -13,7 +13,7 @@ use Throwable;
  * Paiement par carte via l'API Stripe (PaymentIntents).
  *
  * `paymentToken` est l'identifiant d'un `PaymentMethod` Stripe (`pm_…`) cree
- * cote client par Stripe.js — jamais un numero de carte, qui ne doit a aucun
+ * cote client par Stripe.js - jamais un numero de carte, qui ne doit a aucun
  * moment transiter par notre backend (portee PCI-DSS).
  *
  * **Sans cle secrete configuree** (`STRIPE_SECRET`), aucun appel reseau n'est
@@ -93,7 +93,7 @@ final class StripePaymentGateway implements PaymentGatewayContract
             gateway: $this->name(),
             externalReference: $reference,
             status: $isFailing ? GatewayStatus::Failed : GatewayStatus::Succeeded,
-            failureReason: $isFailing ? 'Carte refusee (simulation — aucune cle Stripe configuree).' : null,
+            failureReason: $isFailing ? 'Carte refusee (simulation - aucune cle Stripe configuree).' : null,
         );
     }
 }

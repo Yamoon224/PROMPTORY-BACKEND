@@ -37,7 +37,7 @@ use Illuminate\Support\ServiceProvider;
  * Le paiement suit une regle a part : deux moyens de paiement au choix de
  * l'acheteur (Stripe, PayPal) ne peuvent pas se resoudre a un seul agregateur
  * lie une fois pour toutes au demarrage. `PaymentGatewayResolver` (voir le
- * domaine Payments) choisit donc la classe a l'usage, par requete — il n'a pas
+ * domaine Payments) choisit donc la classe a l'usage, par requete - il n'a pas
  * besoin d'etre declare ici, n'ayant aucune dependance a cabler.
  */
 class DomainServiceProvider extends ServiceProvider

@@ -10,7 +10,7 @@ use Spatie\Permission\Models\Role;
  * Referentiel des roles et permissions.
  *
  * Deux permissions suffisent au perimetre actuel : `prompts.moderate` (file
- * de validation) et `platform.manage` (back-office complet — comptes,
+ * de validation) et `platform.manage` (back-office complet - comptes,
  * referentiel, ventes, audit). Un role `user` sans aucune permission peut
  * neanmoins creer, vendre et acheter des prompts : ces actions se
  * verifient par propriete (voir `OwnershipViolationException`), pas par
